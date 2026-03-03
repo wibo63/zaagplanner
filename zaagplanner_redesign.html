@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Zaagplanner — Koolstraweb</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #f0f0f0;
+  --surface:   #ffffff;
+  --border:    #d8d8d8;
+  --wood:      #4a6fa5;
+  --wood2:     #2d4e7e;
+  --text:      #1a2332;
+  --muted:     #7a8a9a;
+  --result-bg: #e8edf4;
+  --input-bg:  #f8f8f8;
+  --good:      #2a6e3f;
+  --warn:      #a03020;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+body::before {
+  content: ''; position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 100; opacity: 0.3;
+}
+.grain-bg { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.grain-bg::after {
+  content: ''; position: absolute; inset: -50%;
+  background: repeating-linear-gradient(92deg, transparent, transparent 60px, rgba(74,111,165,0.03) 60px, rgba(74,111,165,0.03) 61px);
+  transform: rotate(-3deg);
+}
+header { position: relative; z-index: 10; padding: 48px 24px 32px; max-width: 720px; margin: 0 auto; }
+.back-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--muted); text-decoration: none; margin-bottom: 24px; transition: color 0.2s;
+}
+.back-link:hover { color: var(--wood); }
+.logo { font-family: 'Bebas Neue', sans-serif; font-size: clamp(44px, 10vw, 72px); letter-spacing: 4px; line-height: 1; color: var(--text); margin-bottom: 6px; }
+.logo span { color: var(--wood); }
+.tagline { font-size: 10px; letter-spacing: 4px; text-transform: uppercase; color: var(--muted); margin-bottom: 24px; }
+.divider { width: 100%; height: 1px; background: linear-gradient(90deg, var(--wood2), transparent); margin-bottom: 32px; }
+
+main { position: relative; z-index: 10; max-width: 720px; margin: 0 auto; padding: 0 24px 80px; }
+
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  padding: 24px; margin-bottom: 2px; position: relative; overflow: hidden;
+}
+.card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--wood); transform: scaleX(0); transform-origin: left; transition: transform 0.3s ease;
+}
+.card:focus-within::before { transform: scaleX(1); }
+.card-title { font-size: 9px; letter-spacing: 4px; text-transform: uppercase; color: var(--muted); margin-bottom: 18px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+
+/* Sheet buttons */
+.sheet-buttons { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 14px; }
+.sheet-btn {
+  padding: 9px 16px; border: 1px solid var(--border); background: var(--input-bg);
+  font-family: 'DM Mono', monospace; font-size: 12px; cursor: pointer;
+  transition: all 0.15s; color: var(--text); letter-spacing: 1px;
+}
+.sheet-btn:hover { border-color: var(--wood); color: var(--wood); }
+.sheet-btn.active { background: var(--wood); color: #fff; border-color: var(--wood); }
+.custom-dims { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.custom-dims input {
+  width: 90px; padding: 8px 12px; border: 1px solid var(--border);
+  background: var(--input-bg); font-family: 'DM Mono', monospace; font-size: 14px;
+  color: var(--text); outline: none; transition: border-color 0.15s;
+}
+.custom-dims input:focus { border-color: var(--wood); background: #fff; }
+.custom-dims .sep { color: var(--muted); font-size: 18px; }
+.custom-dims label { font-size: 10px; color: var(--muted); letter-spacing: 1px; }
+.kerf-row { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
+.kerf-row label { font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+.kerf-row input {
+  width: 70px; padding: 8px 12px; border: 1px solid var(--border);
+  background: var(--input-bg); font-family: 'DM Mono', monospace; font-size: 14px;
+  color: var(--text); outline: none; transition: border-color 0.15s;
+}
+.kerf-row input:focus { border-color: var(--wood); background: #fff; }
+.kerf-row span { font-size: 11px; color: var(--muted); }
+
+/* Piece rows */
+.col-labels { display: grid; grid-template-columns: 1fr 80px 12px 80px 50px 36px; gap: 6px; margin-bottom: 6px; }
+.col-labels span { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+.piece-row { display: grid; grid-template-columns: 1fr 80px 12px 80px 50px 36px; gap: 6px; align-items: center; margin-bottom: 6px; }
+.piece-row input {
+  padding: 8px 10px; border: 1px solid var(--border); background: var(--input-bg);
+  font-family: 'DM Mono', monospace; font-size: 13px; color: var(--text); outline: none;
+  width: 100%; transition: border-color 0.15s;
+}
+.piece-row input:focus { border-color: var(--wood); background: #fff; }
+.piece-row .sep { color: var(--muted); text-align: center; font-size: 16px; }
+.qty-input { text-align: center; }
+.del-btn {
+  width: 34px; height: 34px; border: 1px solid var(--border); background: var(--input-bg);
+  color: var(--muted); font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+}
+.del-btn:hover { border-color: var(--warn); color: var(--warn); background: #fff0ee; }
+.add-btn {
+  margin-top: 10px; padding: 10px 18px; border: 1px dashed var(--border);
+  background: none; font-family: 'DM Mono', monospace; font-size: 11px;
+  color: var(--muted); cursor: pointer; letter-spacing: 2px; text-transform: uppercase;
+  transition: all 0.15s; width: 100%;
+}
+.add-btn:hover { border-color: var(--wood); color: var(--wood); }
+
+/* Calculate button */
+.calc-btn {
+  width: 100%; padding: 16px; background: var(--wood2); color: #fff; border: none;
+  font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 5px;
+  cursor: pointer; transition: all 0.15s; margin-bottom: 2px;
+}
+.calc-btn:hover { background: var(--wood); }
+.calc-btn:active { transform: scale(0.995); }
+
+/* Results */
+.results { width: 100%; }
+.result-header {
+  font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 4px;
+  color: var(--wood2); margin-bottom: 2px; padding: 16px 0 12px;
+  border-bottom: 2px solid var(--wood2);
+}
+.sheet-plan {
+  background: var(--surface); border: 1px solid var(--border);
+  border-top: 2px solid var(--wood); padding: 20px; margin-bottom: 2px;
+}
+.sheet-plan h3 { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
+.canvas-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+canvas { display: block; border: 1px solid var(--border); max-width: 100%; }
+.legend { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text); }
+.legend-swatch { width: 12px; height: 12px; border: 1px solid rgba(0,0,0,0.15); flex-shrink: 0; }
+.stats-row { display: flex; gap: 2px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.stat { background: var(--result-bg); border: 1px solid var(--border); padding: 12px 16px; flex: 1; min-width: 80px; }
+.stat .val { font-size: 20px; font-weight: 500; color: var(--text); }
+.stat .val.good { color: var(--good); }
+.stat .val.warn { color: var(--warn); }
+.stat .lbl { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+.error-msg { background: #fff0ee; border: 1px solid #e0b0a8; padding: 12px 16px; font-size: 12px; color: var(--warn); margin-bottom: 12px; }
+
+footer {
+  position: relative; z-index: 10; border-top: 1px solid var(--border);
+  padding: 20px 24px; max-width: 720px; margin: 0 auto;
+  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+}
+.footer-brand { font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 3px; color: var(--muted); }
+.footer-brand span { color: var(--wood); }
+.footer-note { font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; }
+
+@keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+header { animation: fadeUp 0.5s ease both; }
+
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+input[type=number] { -moz-appearance: textfield; }
+
+@media (max-width: 520px) {
+  header { padding: 32px 16px 24px; }
+  main { padding: 0 16px 60px; }
+  .piece-row { grid-template-columns: 1fr 70px 10px 70px 44px 32px; gap: 4px; }
+  .col-labels { grid-template-columns: 1fr 70px 10px 70px 44px 32px; gap: 4px; }
+}
+</style>
+</head>
+<body>
+<div class="grain-bg"></div>
+<header>
+  <a class="back-link" href="https://koolstraweb.nl">← Koolstraweb</a>
+  <div class="logo">ZAAG<span>PLANNER</span></div>
+  <div class="tagline">Plaatmateriaal optimizer</div>
+  <div class="divider"></div>
+</header>
+<main>
+  <!-- Sheet size -->
+  <div class="card">
+    <div class="card-title">Plaatmaat (cm)</div>
+    <div class="sheet-buttons">
+      <button class="sheet-btn active" onclick="selectSheet(122,244,this)">122 × 244</button>
+      <button class="sheet-btn" onclick="selectSheet(122,61,this)">122 × 61</button>
+      <button class="sheet-btn" id="customBtn" onclick="selectSheet(null,null,this)">Eigen maat</button>
+    </div>
+    <div class="custom-dims" id="customDims" style="display:none">
+      <label>B</label>
+      <input type="number" id="sheetW" placeholder="122" min="1">
+      <span class="sep">×</span>
+      <label>H</label>
+      <input type="number" id="sheetH" placeholder="244" min="1">
+      <label style="margin-left:4px">cm</label>
+    </div>
+    <div class="kerf-row">
+      <label>Zaagbreedte</label>
+      <input type="number" id="kerf" value="0.3" step="0.1" min="0">
+      <span>cm (bijv. 0.3 = 3mm)</span>
+    </div>
+  </div>
+
+  <!-- Pieces -->
+  <div class="card">
+    <div class="card-title">Benodigde stukken</div>
+    <div class="col-labels">
+      <span>Naam</span><span>Breedte</span><span></span><span>Hoogte</span><span>Aantal</span><span></span>
+    </div>
+    <div id="pieceList"></div>
+    <button class="add-btn" onclick="addPiece()">+ Stuk toevoegen</button>
+  </div>
+
+  <button class="calc-btn" onclick="calculate()">BEREKEN ZAAGPLAN</button>
+  <div class="results" id="results"></div>
+</main>
+<footer>
+  <div class="footer-brand">KOOLSTRA<span>WEB</span></div>
+  <div class="footer-note">Werkplaats tools</div>
+</footer>
+<script>
+let sheetW=122, sheetH=244, pieces=[], pieceId=0;
+const COLORS=['#2d4e7e','#4a6fa5','#1a6a4a','#6a3a1a','#4a1a6a','#1a4a6a','#6a4a1a','#1a6a6a','#6a1a4a','#3a5a1a'];
+
+function selectSheet(w,h,btn) {
+  document.querySelectorAll('.sheet-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const custom=document.getElementById('customDims');
+  if(w===null) {
+    custom.style.display='flex';
+    sheetW=parseFloat(document.getElementById('sheetW').value)||122;
+    sheetH=parseFloat(document.getElementById('sheetH').value)||244;
+  } else {
+    custom.style.display='none';
+    sheetW=w; sheetH=h;
+  }
+}
+document.getElementById('sheetW').oninput=()=>{sheetW=parseFloat(document.getElementById('sheetW').value)||122;};
+document.getElementById('sheetH').oninput=()=>{sheetH=parseFloat(document.getElementById('sheetH').value)||244;};
+
+function addPiece(name='',w='',h='',qty=1) {
+  pieces.push({id:pieceId++,name,w,h,qty});
+  renderPieces();
+}
+function removePiece(id) { pieces=pieces.filter(p=>p.id!==id); renderPieces(); }
+function renderPieces() {
+  const list=document.getElementById('pieceList');
+  list.innerHTML='';
+  pieces.forEach(p=>{
+    const row=document.createElement('div');
+    row.className='piece-row';
+    row.innerHTML=`
+      <input type="text" placeholder="Naam" value="${p.name}" oninput="updatePiece(${p.id},'name',this.value)">
+      <input type="number" placeholder="b" value="${p.w}" min="1" oninput="updatePiece(${p.id},'w',this.value)">
+      <span class="sep">×</span>
+      <input type="number" placeholder="h" value="${p.h}" min="1" oninput="updatePiece(${p.id},'h',this.value)">
+      <input type="number" class="qty-input" value="${p.qty}" min="1" oninput="updatePiece(${p.id},'qty',this.value)">
+      <button class="del-btn" onclick="removePiece(${p.id})">×</button>`;
+    list.appendChild(row);
+  });
+}
+function updatePiece(id,field,val) {
+  const p=pieces.find(p=>p.id===id);
+  if(p) p[field]=field==='name'?val:parseFloat(val)||'';
+}
+
+function packSheets(items,W,H,kerf) {
+  const sheets=[];
+  const sorted=[...items].sort((a,b)=>(b.w*b.h)-(a.w*a.h));
+  function tryPack(spaces,item) {
+    for(const [iw,ih] of [[item.w,item.h],[item.h,item.w]]) {
+      for(let si=0;si<spaces.length;si++) {
+        const s=spaces[si];
+        if(iw<=s.w&&ih<=s.h) {
+          const placed={x:s.x,y:s.y,w:iw,h:ih,label:item.label,color:item.color,rotated:iw!==item.w};
+          const newSpaces=spaces.filter((_,i)=>i!==si);
+          const rw=s.w-iw-kerf, bh=s.h-ih-kerf;
+          if(rw>0) newSpaces.push({x:s.x+iw+kerf,y:s.y,w:rw,h:ih});
+          if(bh>0) newSpaces.push({x:s.x,y:s.y+ih+kerf,w:s.w,h:bh});
+          return {placed,spaces:newSpaces};
+        }
+      }
+    }
+    return null;
+  }
+  let remaining=[...sorted];
+  while(remaining.length>0) {
+    let spaces=[{x:0,y:0,w:W,h:H}];
+    const placed=[], stillRemaining=[];
+    for(const item of remaining) {
+      const r=tryPack(spaces,item);
+      if(r){placed.push(r.placed);spaces=r.spaces;}
+      else stillRemaining.push(item);
+    }
+    sheets.push({placed,W,H});
+    remaining=stillRemaining;
+    if(remaining.length>0&&placed.length===0) break;
+  }
+  return sheets;
+}
+
+function drawSheet(canvas,sheet,scale) {
+  const ctx=canvas.getContext('2d');
+  const W=sheet.W*scale, H=sheet.H*scale;
+  canvas.width=W; canvas.height=H;
+  // Wood background
+  ctx.fillStyle='#e8dfc8';
+  ctx.fillRect(0,0,W,H);
+  // Grain lines
+  ctx.strokeStyle='rgba(160,130,80,0.12)'; ctx.lineWidth=1;
+  for(let y=0;y<H;y+=5){
+    ctx.beginPath();ctx.moveTo(0,y+Math.sin(y*0.3)*2);ctx.lineTo(W,y+Math.sin(y*0.3+2)*2);ctx.stroke();
+  }
+  // Border
+  ctx.strokeStyle='#c8b890'; ctx.lineWidth=2;
+  ctx.strokeRect(1,1,W-2,H-2);
+  // Pieces
+  sheet.placed.forEach(p=>{
+    const x=p.x*scale,y=p.y*scale,w=p.w*scale,h=p.h*scale;
+    ctx.fillStyle=p.color+'cc'; ctx.fillRect(x,y,w,h);
+    ctx.strokeStyle=p.color; ctx.lineWidth=1.5; ctx.strokeRect(x,y,w,h);
+    ctx.fillStyle='#fff';
+    ctx.font=`bold ${Math.min(12,w*0.18,h*0.3)}px DM Mono,monospace`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    const label=p.rotated?`↻ ${p.label}`:p.label;
+    const lh=Math.min(13,h*0.25);
+    if(h>28&&w>30) {
+      [`${label}`,`${p.w}×${p.h}`].forEach((line,i)=>{
+        ctx.fillText(line,x+w/2,y+h/2+(i-0.5)*lh,w-4);
+      });
+    }
+  });
+  // Dimension labels
+  ctx.fillStyle='#7a6a4a'; ctx.font='10px DM Mono,monospace';
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  ctx.fillText(`${sheet.W} cm`,W/2,4);
+  ctx.save(); ctx.translate(4,H/2); ctx.rotate(-Math.PI/2);
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  ctx.fillText(`${sheet.H} cm`,0,0); ctx.restore();
+}
+
+function calculate() {
+  const kerf=parseFloat(document.getElementById('kerf').value)||0.3;
+  const results=document.getElementById('results');
+  results.innerHTML='';
+  if(!sheetW||!sheetH){results.innerHTML='<div class="error-msg">Voer een geldige plaatmaat in.</div>';return;}
+  const items=[]; let colorIdx=0;
+  for(const p of pieces) {
+    if(!p.w||!p.h||!p.qty) continue;
+    if(p.w>sheetW&&p.h>sheetW&&p.w>sheetH&&p.h>sheetH){
+      results.innerHTML=`<div class="error-msg">"${p.name||'Stuk'}" (${p.w}×${p.h} cm) past niet op de plaat (${sheetW}×${sheetH} cm).</div>`;
+      return;
+    }
+    const color=COLORS[colorIdx++%COLORS.length];
+    for(let i=0;i<p.qty;i++) items.push({w:p.w,h:p.h,label:p.name||`${p.w}×${p.h}`,color});
+  }
+  if(items.length===0){results.innerHTML='<div class="error-msg">Voeg eerst stukken toe.</div>';return;}
+  const sheets=packSheets(items,sheetW,sheetH,kerf);
+  const totalArea=sheetW*sheetH;
+  const maxW=Math.min(640,window.innerWidth-64);
+  const scale=Math.min(maxW/sheetW,400/sheetH);
+  results.innerHTML=`<div class="result-header">ZAAGPLAN — ${sheets.length} plaat${sheets.length>1?'en':''}</div>`;
+  sheets.forEach((sheet,idx)=>{
+    const sheetUsed=sheet.placed.reduce((s,p)=>s+p.w*p.h,0);
+    const pct=Math.round(sheetUsed/totalArea*100);
+    const waste=Math.round((totalArea-sheetUsed)/totalArea*100);
+    const div=document.createElement('div');
+    div.className='sheet-plan';
+    div.innerHTML=`
+      <h3>Plaat ${idx+1} — ${sheetW} × ${sheetH} cm</h3>
+      <div class="canvas-wrap"><canvas id="canvas${idx}"></canvas></div>
+      <div class="legend" id="legend${idx}"></div>
+      <div class="stats-row">
+        <div class="stat"><div class="val ${pct>=70?'good':'warn'}">${pct}%</div><div class="lbl">Benut</div></div>
+        <div class="stat"><div class="val warn">${waste}%</div><div class="lbl">Verspilling</div></div>
+        <div class="stat"><div class="val">${sheet.placed.length}</div><div class="lbl">Stukken</div></div>
+      </div>`;
+    results.appendChild(div);
+    drawSheet(document.getElementById(`canvas${idx}`),sheet,scale);
+    const seen=new Set(), legend=document.getElementById(`legend${idx}`);
+    sheet.placed.forEach(p=>{
+      const key=p.label+p.color;
+      if(seen.has(key)) return; seen.add(key);
+      const item=document.createElement('div');
+      item.className='legend-item';
+      item.innerHTML=`<div class="legend-swatch" style="background:${p.color}"></div><span>${p.label} (${p.w}×${p.h} cm)</span>`;
+      legend.appendChild(item);
+    });
+  });
+  results.scrollIntoView({behavior:'smooth'});
+}
+addPiece('Zijkant','','',2);
+addPiece('Bodem','','',1);
+addPiece('','','',1);
+</script>
+</body>
+</html>
